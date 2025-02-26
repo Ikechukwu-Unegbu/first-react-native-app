@@ -1,74 +1,105 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Link, useFocusEffect, useRouter } from "expo-router";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const HomeScreen = () => {
+  const [notes, setNotes] = useState([]);
+  const router = useRouter();
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Function to load notes from storage
+  const loadNotes = async () => {
+    try {
+      const storedNotes = await AsyncStorage.getItem("notes");
+      setNotes(storedNotes ? JSON.parse(storedNotes) : []);
+    } catch (error) {
+      console.error("Error loading notes:", error);
+    }
+  };
+
+  // Load notes when screen mounts
+  useEffect(() => {
+    loadNotes();
+  }, []);
+
+  // Reload notes when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadNotes();
+    }, [])
   );
-}
+
+  // Function to truncate content to first 8 words
+  const truncateContent = (content) => {
+    const words = content.split(" ");
+    return words.length > 8 ? words.slice(0, 8).join(" ") + "..." : content;
+  };
+
+  return (
+    <View style={styles.container}>
+      {notes.length === 0 ? (
+        <Text style={styles.emptyText}>No notes yet. Add one!</Text>
+      ) : (
+        <FlatList
+          data={notes}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.noteCard}
+              onPress={() => router.push({ pathname: "/notedetail", params: { id: item.id, title: item.title, content: item.content } })}
+            >
+              <Text style={styles.noteTitle}>{item.title}</Text>
+              <Text style={styles.noteContent}>{truncateContent(item.content)}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      <Link href="/addnote" style={styles.addButton}>
+        <Text style={styles.addButtonText}>+ Add Note</Text>
+      </Link>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    padding: 16,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  emptyText: {
+    textAlign: "center",
+    fontSize: 18,
+    color: "#6b7280",
+    marginTop: 50,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  noteCard: {
+    backgroundColor: "#f3f4f6",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  noteTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  noteContent: {
+    color: "#4b5563",
+  },
+  addButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    backgroundColor: "#3b82f6",
+    padding: 12,
+    borderRadius: 10,
+  },
+  addButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
+
+export default HomeScreen;
